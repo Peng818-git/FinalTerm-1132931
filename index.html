@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1132931-FinalTerm</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            --board-wood: #e3c081;
+            --highlight: #5bd1d7;
+            --accent: #ffd700;
+            --danger: #ff4757;
+            --text-color: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background: var(--bg-gradient);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; color: var(--text-color); overflow: hidden;
+        }
+
+        body::before {
+            content: ""; position: absolute; top: -20%; left: -20%; width: 60%; height: 60%;
+            background: radial-gradient(circle, rgba(91, 209, 215, 0.1) 0%, transparent 70%);
+            z-index: -1; filter: blur(50px);
+        }
+
+        .game-wrapper {
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            background: rgba(15, 23, 42, 0.85); padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-top: 4px solid var(--accent);
+            position: relative;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shaking { animation: shake 0.5s; border-color: var(--danger) !important; box-shadow: 0 0 20px var(--danger) !important; }
+
+        h1 { margin: 0; font-size: 2.2rem; letter-spacing: 5px; text-shadow: 0 0 10px rgba(91, 209, 215, 0.6); font-weight: 700; }
+
+        #board {
+            position: relative; width: calc(44px * 9 + 30px); height: calc(44px * 9 + 30px);
+            background-color: var(--board-wood);
+            background-image: linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px), url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnPjxmaWx0ZXIgaWQ9J24nPjxmZVR1cmJ1bGVuY2UgdHlwZT0nZnJhY3RhbE5vaXNlJyBiYXNlRnJlcXVlbmN5PScwLjUgbjAuMScgbnVtT2N0YXZlcz0nMicgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbHRlcj0ndXJsKCNuKScgb3BhY2l0eT0nMC4xNScvPjwvc3ZnPg==");
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 20px rgba(139, 90, 43, 0.6), 5px 5px 0px #8b5a2b;
+            border-radius: 4px; display: grid;
+            grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr);
+            padding: 15px; box-sizing: border-box; border: 1px solid #5e3e1c;
+            transition: border-color 0.2s;
+        }
+
+        .intersection { position: relative; width: 100%; height: 100%; cursor: pointer; z-index: 1; }
+        .intersection::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #222; z-index: -1; box-shadow: 0 1px 0 rgba(255,255,255,0.2); }
+        .intersection::after { content: ''; position: absolute; left: 50%; top: 0; height: 100%; width: 1px; background: #222; z-index: -1; box-shadow: 1px 0 0 rgba(255,255,255,0.2); }
+        .intersection[data-c="0"]::before { left: 50%; width: 50%; }
+        .intersection[data-c="8"]::before { width: 50%; }
+        .intersection[data-r="0"]::after { top: 50%; height: 50%; }
+        .intersection[data-r="8"]::after { height: 50%; }
+
+        .star-point::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; background: #111; border-radius: 50%; z-index: 0; }
+        .star-point .line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #222; z-index: -1; }
+        .intersection[data-c="0"].star-point .line-h { left: 50%; width: 50%; }
+        .intersection[data-c="8"].star-point .line-h { width: 50%; }
+
+        .stone {
+            width: 39px; height: 39px; border-radius: 50%; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 10; transition: transform 0.1s; box-sizing: border-box;
+        }
+        .stone.black { background: radial-gradient(circle at 35% 35%, #777 0%, #222 50%, #000 100%); box-shadow: 3px 3px 6px rgba(0,0,0,0.7); border: 1px solid rgba(255, 255, 255, 0.15); }
+        .stone.white { background: radial-gradient(circle at 35% 35%, #ffffff 0%, #f0f0f0 50%, #d9d9d9 100%); box-shadow: 3px 3px 6px rgba(0,0,0,0.6); border: 1px solid rgba(0, 0, 0, 0.15); }
+        .stone.last-move::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 10px; height: 10px; background: #e74c3c; border-radius: 50%;
+            box-shadow: 0 0 10px #e74c3c, 0 0 5px #fff; animation: pulse-red 1.5s infinite;
+        }
+        .stone.dead { opacity: 0.5; filter: grayscale(100%); transform: translate(-50%, -50%) scale(0.9); box-shadow: 0 0 0 2px red; }
+        .intersection:hover:not(:has(.stone))::after {
+            content: ''; position: absolute; width: 30px; height: 30px;
+            background: rgba(91, 209, 215, 0.3); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
+            box-shadow: 0 0 10px rgba(91, 209, 215, 0.5);
+        }
+
+        #toastOverlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            background: rgba(255, 71, 87, 0.9); color: white;
+            padding: 20px 40px; border-radius: 8px; font-size: 1.5rem; font-weight: bold;
+            box-shadow: 0 0 30px rgba(255, 71, 87, 0.8);
+            z-index: 200; pointer-events: none; opacity: 0;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center; border: 2px solid white; white-space: nowrap;
+        }
+        #toastOverlay.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+        #resultModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 300;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            backdrop-filter: blur(8px);
+        }
+        #resultModal.show { opacity: 1; pointer-events: auto; }
+        .result-card {
+            background: linear-gradient(135deg, #2c3e50, #000); border: 1px solid var(--highlight);
+            padding: 40px; border-radius: 20px; text-align: center; color: white;
+            box-shadow: 0 0 50px rgba(91, 209, 215, 0.3); transform: scale(0.8); transition: transform 0.3s;
+            max-width: 400px; width: 90%;
+        }
+        #resultModal.show .result-card { transform: scale(1); }
+        .winner-title { font-size: 2.5rem; margin-bottom: 20px; color: var(--accent); text-shadow: 0 0 15px var(--accent); }
+        .score-detail { font-size: 1.2rem; margin: 10px 0; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .score-val { font-weight: bold; color: var(--highlight); }
+        .result-btn { margin-top: 30px; background: var(--highlight); color: #000; font-weight: bold; padding: 12px 30px; font-size: 1.2rem; }
+        .result-btn:hover { background: #fff; box-shadow: 0 0 20px #fff; }
+
+        .controls { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+        button {
+            padding: 10px 24px; font-size: 1rem; border: none; border-radius: 30px;
+            cursor: pointer; background: linear-gradient(180deg, #34495e, #2c3e50);
+            color: #fff; font-family: 'Noto Serif TC', serif; letter-spacing: 1px;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(91, 209, 215, 0.3); border-color: var(--highlight); }
+        .btn-pass { background: linear-gradient(180deg, #e67e22, #d35400); }
+        .btn-auto { background: linear-gradient(180deg, #9b59b6, #8e44ad); }
+        .btn-calc { background: linear-gradient(180deg, #27ae60, #219150); }
+
+        .status-bar {
+            background: rgba(0, 0, 0, 0.3); padding: 15px 25px; border-radius: 8px; width: 100%; box-sizing: border-box;
+            border-left: 4px solid var(--highlight); display: flex; flex-direction: column; gap: 5px;
+        }
+        #gameStatus { font-size: 1.3rem; font-weight: bold; }
+        .atari-warning { 
+            color: #ff4757; font-weight: bold; font-size: 1.2rem; text-shadow: 0 0 5px rgba(255, 71, 87, 0.5);
+            animation: flash 0.5s infinite alternate; display: none; margin-top: 5px;
+        }
+        .score-board { display: flex; justify-content: center; gap: 20px; margin-top: 5px; font-family: 'Arial', sans-serif; font-size: 0.95rem; opacity: 0.8; }
+        .territory-black { background: #000; width: 12px; height: 12px; border-radius: 2px; box-shadow: 0 0 2px #fff;}
+        .territory-white { background: #fff; width: 12px; height: 12px; border-radius: 2px; box-shadow: 0 0 2px #000;}
+        
+        #loadingOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9); color: var(--highlight);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 1.5rem; z-index: 100; border-radius: 12px; display: none; backdrop-filter: blur(5px);
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 3px solid transparent; border-top-color: var(--highlight);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; box-shadow: 0 0 15px var(--highlight);
+        }
+
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+        @keyframes flash { from { opacity: 1; transform: scale(1); } to { opacity: 0.5; transform: scale(1.05); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 500px) { .game-wrapper { padding: 15px; width: 95%; } #board { width: 100%; height: auto; aspect-ratio: 1/1; } h1 { font-size: 1.8rem; } }
+    </style>
+</head>
+<body>
+
+<div class="game-wrapper">
+    <div id="toastOverlay"></div>
+    <div id="loadingOverlay"><div class="spinner"></div><div>神之一手運算中...</div></div>
+    <h1>九路圍棋</h1>
+    
+    <div class="status-bar">
+        <div id="gameStatus">輪到：<span style="color: var(--accent);">黑棋</span></div>
+        <div id="atariMsg" class="atari-warning">⚠️ 叫吃！</div>
+        <div class="score-board">
+            <span>黑方俘虜: <span id="blackCaps" style="color: #fff; font-weight: bold;">0</span></span>
+            <span> | </span>
+            <span>白方俘虜: <span id="whiteCaps" style="color: #fff; font-weight: bold;">0</span></span>
+        </div>
+    </div>
+
+    <div id="board"></div>
+
+    <div class="controls" id="playControls">
+        <button onclick="game.undo()">悔棋</button>
+        <button onclick="game.pass()" class="btn-pass" id="passBtnDisp">虛手 (0/2)</button>
+        <button onclick="game.toggleAI()" id="aiBtn">AI: 開</button>
+        <button onclick="game.reset()">新局</button>
+    </div>
+
+    <div class="controls" id="scoringControls" style="display:none;">
+        <div style="color: var(--accent); width: 100%; text-align: center; margin-bottom: 5px; font-weight: bold;">
+            雙方停手 | 請確認死子 (可點擊修改)
+        </div>
+        <button onclick="game.autoScore()" class="btn-auto">⚡ 自動判斷</button>
+        <button onclick="game.calculateScore()" class="btn-calc">✅ 確認結算</button>
+    </div>
+</div>
+
+<div id="resultModal">
+    <div class="result-card">
+        <div class="winner-title" id="winnerTitle">🏆 黑棋勝</div>
+        <div class="score-detail"><span>⚫ 黑棋 (子+地)</span><span class="score-val" id="resBlack">0</span></div>
+        <div class="score-detail"><span>⚪ 白棋 (子+地+貼目)</span><span class="score-val" id="resWhite">0</span></div>
+        <div class="score-detail" style="border:none; margin-top:20px; font-size:0.9rem; color:#aaa;">貼目: 3.5子</div>
+        <button class="result-btn" onclick="document.getElementById('resultModal').classList.remove('show'); game.reset();">再來一局</button>
+    </div>
+</div>
+
+<script>
+class GoGame {
+    constructor() {
+        this.boardSize = 9;
+        this.boardEl = document.getElementById('board');
+        this.reset();
+    }
+
+    reset() {
+        this.grid = Array(9).fill().map(() => Array(9).fill(0));
+        this.turn = 1; 
+        this.history = [];
+        this.captures = { 1: 0, 2: 0 };
+        this.passCount = 0;
+        this.gamePhase = 'playing'; 
+        this.aiEnabled = true;
+        this.lastMove = null;
+        this.deadStones = [];
+
+        this.renderBoard();
+        this.updateUI();
+        document.getElementById('playControls').style.display = 'flex';
+        document.getElementById('scoringControls').style.display = 'none';
+        this.boardEl.classList.remove('marking-mode');
+        document.getElementById('atariMsg').style.display = 'none';
+    }
+
+    showToast(msg, type = 'error') {
+        const toast = document.getElementById('toastOverlay');
+        const board = document.getElementById('board');
+        
+        toast.textContent = msg;
+        toast.className = 'show';
+        
+        if(type === 'error') {
+            toast.style.background = 'rgba(255, 71, 87, 0.9)';
+            board.classList.add('shaking');
+            setTimeout(() => board.classList.remove('shaking'), 500);
+        } else {
+            toast.style.background = 'rgba(39, 174, 96, 0.9)';
+        }
+        setTimeout(() => { toast.classList.remove('show'); }, 1500);
+    }
+
+    renderBoard() {
+        this.boardEl.innerHTML = '';
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const intersect = document.createElement('div');
+                intersect.className = 'intersection';
+                intersect.dataset.r = r;
+                intersect.dataset.c = c;
+
+                if ((r === 4 && c === 4) || ((r === 2 || r === 6) && (c === 2 || c === 6))) {
+                    intersect.classList.add('star-point');
+                    const lineH = document.createElement('div');
+                    lineH.className = 'line-h';
+                    intersect.appendChild(lineH);
+                }
+
+                if (this.grid[r][c] !== 0) {
+                    const stone = document.createElement('div');
+                    stone.className = `stone ${this.grid[r][c] === 1 ? 'black' : 'white'}`;
+                    if (this.lastMove && this.lastMove.r === r && this.lastMove.c === c) {
+                        stone.classList.add('last-move');
+                    }
+                    if (this.deadStones.includes(`${r},${c}`)) {
+                        stone.classList.add('dead');
+                    }
+                    intersect.appendChild(stone);
+                }
+                intersect.onclick = () => this.handleInput(r, c);
+                this.boardEl.appendChild(intersect);
+            }
+        }
+    }
+
+    handleInput(r, c) {
+        if (this.gamePhase === 'playing') {
+            if (this.turn === 2 && this.aiEnabled) return; 
+            this.playMove(r, c);
+        } else if (this.gamePhase === 'marking') {
+            this.toggleDeadStone(r, c);
+        }
+    }
+
+    playMove(r, c) {
+        if (this.grid[r][c] !== 0) return;
+
+        const testGrid = JSON.parse(JSON.stringify(this.grid));
+        testGrid[r][c] = this.turn;
+        const opponent = this.turn === 1 ? 2 : 1;
+        const capturedStones = this.checkCaptures(testGrid, r, c, opponent);
+        const myLiberties = this.countLiberties(testGrid, r, c, this.turn);
+        
+        if (capturedStones.length === 1 && myLiberties === 0 && this.koCoordinate && this.koCoordinate.r === r && this.koCoordinate.c === c) {
+            this.showToast("⚠️ 打劫：禁止立即回提"); return;
+        }
+        if (myLiberties === 0 && capturedStones.length === 0) {
+            this.showToast("🚫 禁著點：禁止自殺"); return;
+        }
+
+        this.history.push({
+            grid: JSON.parse(JSON.stringify(this.grid)),
+            turn: this.turn,
+            captures: {...this.captures},
+            ko: this.koCoordinate,
+            lastMove: this.lastMove,
+            passCount: this.passCount
+        });
+
+        this.grid[r][c] = this.turn;
+        if (capturedStones.length > 0) {
+            capturedStones.forEach(pos => this.grid[pos.r][pos.c] = 0);
+            this.captures[this.turn] += capturedStones.length;
+        }
+
+        this.koCoordinate = (capturedStones.length === 1 && this.countGroupSize(this.grid, r, c, this.turn) === 1 && this.countLiberties(this.grid, r, c, this.turn) === 1) ? capturedStones[0] : null;
+        
+        this.lastMove = {r, c};
+        this.passCount = 0; 
+        
+        this.renderBoard();
+        this.checkAtari(opponent);
+        this.turn = opponent;
+        this.updateUI();
+        this.checkGlobalEnd();
+
+        if (this.aiEnabled && this.turn === 2 && this.gamePhase === 'playing') {
+            setTimeout(() => this.aiMove(), 500);
+        }
+    }
+
+    pass() {
+        this.passCount++;
+        this.history.push({
+            grid: JSON.parse(JSON.stringify(this.grid)),
+            turn: this.turn,
+            captures: {...this.captures},
+            ko: this.koCoordinate,
+            lastMove: this.lastMove,
+            passCount: this.passCount - 1
+        });
+
+        this.updateUI();
+
+        if (this.passCount >= 2) {
+            this.showToast("雙方停手，開始結算", "success");
+            this.initScoringPhase();
+        } else {
+            this.turn = this.turn === 1 ? 2 : 1;
+            this.updateUI();
+            this.showToast("✋ 虛手 (Pass)", "info");
+            
+            this.checkGlobalEnd();
+
+            if (this.aiEnabled && this.turn === 2 && this.gamePhase === 'playing') {
+                setTimeout(() => this.aiMove(), 500);
+            }
+        }
+    }
+
+    undo() {
+        if (this.history.length === 0 || this.gamePhase !== 'playing') return;
+        const state = this.history.pop();
+        this.grid = state.grid;
+        this.turn = state.turn;
+        this.captures = state.captures;
+        this.koCoordinate = state.ko;
+        this.lastMove = state.lastMove;
+        this.passCount = state.passCount || 0; 
+        this.renderBoard();
+        this.updateUI();
+        document.getElementById('atariMsg').style.display = 'none';
+    }
+
+    // --- AI 實戰邏輯 ---
+    aiMove() {
+        if (this.gamePhase !== 'playing') return;
+        
+        let validMoves = [];
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (this.grid[r][c] === 0) {
+                    if (this.koCoordinate && this.koCoordinate.r === r && this.koCoordinate.c === c) continue; 
+                    const score = this.evaluatePosition(this.grid, r, c, 2);
+                    // 只有分數大於0的才考慮 (代表有建設性)
+                    if (score > 0) validMoves.push({r, c, score});
+                }
+            }
+        }
+
+        // 如果沒有正分棋步，直接虛手 (不勉強下)
+        if (validMoves.length === 0) {
+            this.pass(); 
+            return;
+        }
+
+        validMoves.sort((a, b) => b.score - a.score);
+        const range = Math.min(3, validMoves.length);
+        const choice = validMoves[Math.floor(Math.random() * range)];
+        
+        this.playMove(choice.r, choice.c);
+    }
+
+    evaluatePosition(grid, r, c, color) {
+        const testGrid = JSON.parse(JSON.stringify(grid));
+        testGrid[r][c] = color;
+        const opponent = color === 1 ? 2 : 1;
+        const libs = this.countLiberties(testGrid, r, c, color);
+        const caps = this.checkCaptures(testGrid, r, c, opponent);
+        
+        if (libs === 0 && caps.length === 0) return -9999; // 自殺
+        
+        let score = 0;
+        score += caps.length * 25; // 吃子最重要
+        
+        if (libs === 1) score -= 20; // 剩一氣極危險 (除非能吃人)
+
+        // 避免填眼
+        if (this.isEye(grid, r, c, color)) score -= 50; 
+
+        // 避免填自己的地 (重要！防止 AI 在終局時搗亂)
+        if (this.isFillingOwnTerritory(grid, r, c, color)) score -= 10;
+
+        // 金角銀邊
+        if ((r===2||r===6) && (c===2||c===6)) score += 4;
+        if (r===4 && c===4) score += 2;
+        
+        // 戰鬥意識：貼著對方下
+        const neighbors = [[r-1,c], [r+1,c], [r,c-1], [r,c+1]];
+        let touchEnemy = false;
+        neighbors.forEach(([nr, nc]) => {
+            if (nr>=0 && nr<9 && nc>=0 && nc<9 && grid[nr][nc] === opponent) touchEnemy = true;
+        });
+        if (touchEnemy) score += 3;
+
+        // 邊緣懲罰 (除非有吃子/戰鬥，否則不輕易下一路)
+        if (r===0 || r===8 || c===0 || c===8) {
+            if (caps.length === 0 && !touchEnemy) score -= 2;
+        }
+
+        return score + Math.random(); 
+    }
+
+    // 判斷是否為真眼
+    isEye(grid, r, c, color) {
+        const neighbors = [[r-1,c], [r+1,c], [r,c-1], [r,c+1]];
+        for (let [nr, nc] of neighbors) {
+            if (nr>=0 && nr<9 && nc>=0 && nc<9) {
+                if (grid[nr][nc] !== color) return false; // 只要有一個鄰居不是自己，就不是眼
+            }
+        }
+        return true;
+    }
+
+    // 判斷是否在填自己的實地 (上下左右都是自己人)
+    isFillingOwnTerritory(grid, r, c, color) {
+        const neighbors = [[r-1,c], [r+1,c], [r,c-1], [r,c+1]];
+        let friendlyCount = 0;
+        let totalNeighbors = 0;
+        for (let [nr, nc] of neighbors) {
+            if (nr>=0 && nr<9 && nc>=0 && nc<9) {
+                totalNeighbors++;
+                if (grid[nr][nc] === color) friendlyCount++;
+            }
+        }
+        // 如果四周都是自己人，且不是為了做眼，那就是填地
+        return friendlyCount === totalNeighbors;
+    }
+
+    checkCaptures(grid, r, c, opponentColor) {
+        let captured = [];
+        [[r-1,c], [r+1,c], [r,c-1], [r,c+1]].forEach(([nr, nc]) => {
+            if (nr>=0 && nr<9 && nc>=0 && nc<9 && grid[nr][nc] === opponentColor) {
+                if (this.countLiberties(grid, nr, nc, opponentColor) === 0) {
+                    captured = captured.concat(this.getGroup(grid, nr, nc, opponentColor));
+                }
+            }
+        });
+        return captured;
+    }
+
+    countLiberties(grid, r, c, color) {
+        const group = this.getGroup(grid, r, c, color);
+        const liberties = new Set();
+        group.forEach(s => {
+            [[s.r-1,s.c], [s.r+1,s.c], [s.r,s.c-1], [s.r,s.c+1]].forEach(([nr, nc]) => {
+                if (nr>=0 && nr<9 && nc>=0 && nc<9 && grid[nr][nc] === 0) liberties.add(`${nr},${nc}`);
+            });
+        });
+        return liberties.size;
+    }
+
+    getGroup(grid, r, c, color) {
+        const group = [];
+        const queue = [{r, c}];
+        const visited = new Set([`${r},${c}`]);
+        while (queue.length > 0) {
+            const curr = queue.pop();
+            group.push(curr);
+            [[curr.r-1,curr.c], [curr.r+1,curr.c], [curr.r,curr.c-1], [curr.r,curr.c+1]].forEach(([nr, nc]) => {
+                if (nr>=0 && nr<9 && nc>=0 && nc<9 && grid[nr][nc] === color && !visited.has(`${nr},${nc}`)) {
+                    visited.add(`${nr},${nc}`); queue.push({r: nr, c: nc});
+                }
+            });
+        }
+        return group;
+    }
+    
+    countGroupSize(grid, r, c, color) { return this.getGroup(grid, r, c, color).length; }
+
+    checkGlobalEnd() {
+        if (!this.hasValidMove(1) && !this.hasValidMove(2)) {
+            setTimeout(() => {
+                this.showToast("雙方無棋可下，自動結算", "info");
+                this.initScoringPhase();
+            }, 1000);
+        }
+    }
+
+    hasValidMove(color) {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (this.grid[r][c] === 0) {
+                    const testGrid = JSON.parse(JSON.stringify(this.grid));
+                    testGrid[r][c] = color;
+                    const libs = this.countLiberties(testGrid, r, c, color);
+                    const opp = color === 1 ? 2 : 1;
+                    const caps = this.checkCaptures(testGrid, r, c, opp);
+                    // 只要不死且不自殺，就算合法
+                    if (libs > 0 || caps.length > 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    toggleAI() { this.aiEnabled = !this.aiEnabled; this.updateUI(); }
+
+    checkAtari(targetColor) {
+        let isAtari = false;
+        const visited = new Set();
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (this.grid[r][c] === targetColor && !visited.has(`${r},${c}`)) {
+                    const group = this.getGroup(this.grid, r, c, targetColor);
+                    group.forEach(s => visited.add(`${s.r},${s.c}`));
+                    if (this.countLiberties(this.grid, r, c, targetColor) === 1) isAtari = true;
+                }
+            }
+        }
+        document.getElementById('atariMsg').style.display = isAtari ? 'block' : 'none';
+    }
+
+    updateUI() {
+        const playerColor = this.turn === 1 ? '#000' : '#fff';
+        const playerName = this.turn === 1 ? '黑棋' : '白棋';
+        const statusHTML = `輪到：<span style="color: ${this.turn === 1 ? 'var(--accent)' : '#fff'}; font-weight: bold;">${playerName}</span>`;
+        document.getElementById('gameStatus').innerHTML = statusHTML;
+        document.getElementById('blackCaps').innerText = this.captures[1];
+        document.getElementById('whiteCaps').innerText = this.captures[2];
+        document.getElementById('aiBtn').innerText = `AI: ${this.aiEnabled ? '開' : '關'}`;
+        
+        document.getElementById('passBtnDisp').innerText = `虛手 (${this.passCount}/2)`;
+    }
+
+    initScoringPhase() {
+        this.gamePhase = 'marking';
+        document.getElementById('gameStatus').innerHTML = "終局結算：請使用自動判斷或手動標記";
+        document.getElementById('playControls').style.display = 'none';
+        document.getElementById('scoringControls').style.display = 'flex';
+        document.getElementById('atariMsg').style.display = 'none';
+    }
+
+    toggleDeadStone(r, c) {
+        if (this.grid[r][c] === 0) return;
+        const key = `${r},${c}`;
+        const color = this.grid[r][c];
+        const group = this.getGroup(this.grid, r, c, color);
+        const isDead = this.deadStones.includes(key);
+        group.forEach(s => {
+            const sKey = `${s.r},${s.c}`;
+            if (isDead) this.deadStones = this.deadStones.filter(k => k !== sKey);
+            else this.deadStones.push(sKey);
+        });
+        this.renderBoard();
+    }
+
+    autoScore() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        setTimeout(() => {
+            let simGrid = JSON.parse(JSON.stringify(this.grid));
+            let simTurn = this.turn;
+            let passes = 0;
+            let movesLimit = 200;
+
+            while (passes < 2 && movesLimit > 0) {
+                let bestMove = null;
+                let maxScore = -Infinity;
+                for (let r = 0; r < 9; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        if (simGrid[r][c] === 0) {
+                            let score = this.evaluatePosition(simGrid, r, c, simTurn);
+                            if (score > 0) { // 只下正分棋
+                                if (score > maxScore) { maxScore = score; bestMove = {r, c}; }
+                            }
+                        }
+                    }
+                }
+                if (bestMove) {
+                    let r = bestMove.r, c = bestMove.c;
+                    let testGrid = JSON.parse(JSON.stringify(simGrid));
+                    testGrid[r][c] = simTurn;
+                    let opp = simTurn === 1 ? 2 : 1;
+                    let caps = this.checkCaptures(testGrid, r, c, opp);
+                    simGrid[r][c] = simTurn;
+                    caps.forEach(p => simGrid[p.r][p.c] = 0);
+                    passes = 0;
+                } else { passes++; }
+                simTurn = simTurn === 1 ? 2 : 1;
+                movesLimit--;
+            }
+
+            this.deadStones = [];
+            for(let r=0; r<9; r++) {
+                for(let c=0; c<9; c++) {
+                    if (this.grid[r][c] !== 0) {
+                        if (simGrid[r][c] !== this.grid[r][c]) this.deadStones.push(`${r},${c}`);
+                    }
+                }
+            }
+            this.renderBoard();
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }, 100);
+    }
+
+    calculateScore() {
+        let blackArea = 0, whiteArea = 0;
+        let calcGrid = JSON.parse(JSON.stringify(this.grid));
+        this.deadStones.forEach(key => {
+            const [r, c] = key.split(',').map(Number);
+            calcGrid[r][c] = 0;
+        });
+
+        const visited = new Set();
+        for(let r=0; r<9; r++) {
+            for(let c=0; c<9; c++) {
+                if(calcGrid[r][c] === 1) blackArea++;
+                else if(calcGrid[r][c] === 2) whiteArea++;
+                else if(!visited.has(`${r},${c}`)) {
+                    let region = [], q = [{r,c}];
+                    visited.add(`${r},${c}`);
+                    let touchB = false, touchW = false;
+                    while(q.length) {
+                        let cur = q.pop();
+                        region.push(cur);
+                        [[cur.r-1,cur.c], [cur.r+1,cur.c], [cur.r,cur.c-1], [cur.r,cur.c+1]].forEach(([nr, nc]) => {
+                            if(nr>=0 && nr<9 && nc>=0 && nc<9) {
+                                if(calcGrid[nr][nc]===0 && !visited.has(`${nr},${nc}`)) {
+                                    visited.add(`${nr},${nc}`); q.push({r:nr, c:nc});
+                                } else if(calcGrid[nr][nc]===1) touchB = true;
+                                else if(calcGrid[nr][nc]===2) touchW = true;
+                            }
+                        });
+                    }
+                    if(touchB && !touchW) { blackArea += region.length; this.highlight(region, 'black'); }
+                    else if(touchW && !touchB) { whiteArea += region.length; this.highlight(region, 'white'); }
+                }
+            }
+        }
+
+        const komi = 3.5;
+        const finalB = blackArea;
+        const finalW = whiteArea + komi;
+        
+        document.getElementById('resBlack').innerText = finalB;
+        document.getElementById('resWhite').innerText = finalW;
+        const title = finalB > finalW ? "🏆 黑棋勝" : (finalB < finalW ? "🏆 白棋勝" : "🤝 和局");
+        const titleEl = document.getElementById('winnerTitle');
+        titleEl.innerText = title;
+        titleEl.style.color = finalB > finalW ? "var(--highlight)" : (finalB < finalW ? "#fff" : "#aaa");
+        
+        document.getElementById('resultModal').classList.add('show');
+        
+        this.gamePhase = 'ended';
+        document.getElementById('scoringControls').style.display = 'none';
+        document.getElementById('playControls').style.display = 'flex';
+    }
+    
+    highlight(region, color) {
+        region.forEach(p => {
+            const el = document.querySelector(`.intersection[data-r="${p.r}"][data-c="${p.c}"]`);
+            const dot = document.createElement('div');
+            dot.className = color === 'black' ? 'territory-black' : 'territory-white';
+            dot.style.position = 'absolute'; dot.style.top='50%'; dot.style.left='50%'; dot.style.transform='translate(-50%,-50%)';
+            el.appendChild(dot);
+        });
+    }
+}
+
+const game = new GoGame();
+</script>
+</body>
+</html>
